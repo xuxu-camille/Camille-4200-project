@@ -2,25 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Data Information</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FAFSA Application Trends and Institutional Factors</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
 </head>
 <body>
-  <header>
-    <h1>Visualization</h1>
-    <nav>
-        <a href=" ">Home</a >
-        <a href="Data_Information.html">Data Information</a >
-        <a href="Visualizations.html">Visualizations</a >
-        <a href="Conclusion.html">Conclusion</a >
-    </nav>
-  </header>
+  <div class="container">
+    <h1>FAFSA Application Trends and Institutional Factors</h1>
+    <p>This dashboard explores FAFSA application patterns using D3 and Altair visualizations.</p>
 
-  <main>
-    <h2>Visualizations</h2>
-
-    <!-- Quarter Tabs -->
-    <div id="quarterTabs">
+    <div class="tabs">
       <button class="tab-button active" data-quarter="Q1">Q1</button>
       <button class="tab-button" data-quarter="Q2">Q2</button>
       <button class="tab-button" data-quarter="Q3">Q3</button>
@@ -28,40 +25,22 @@
       <button class="tab-button" data-quarter="Q5">Q5</button>
     </div>
 
-    <div class="viz-container">
-      <h3>Chart 1: Bar Chart (Top 10 Schools by Selected Quarter)</h3>
-      <div id="viz1"></div>
-    </div>
+    <h2>Top 10 Institutions by FAFSA Applications</h2>
+    <div id="bar-chart"></div>
 
-    <div class="viz-container">
-      <h3>Chart 2: Line Chart (Aggregated Q1–Q5)</h3>
-      <div id="viz2"></div>
-    </div>
+    <h2>FAFSA Applications by State (Map)</h2>
+    <div id="map"></div>
 
-    <div class="viz-container">
-      <h3>Chart 3: Scatter Plot (Dependent vs. Independent in Selected Quarter)</h3>
-      <div id="viz3"></div>
-    </div>
+    <h2>Dependent vs. Independent Applicants</h2>
+    <div id="scatter-plot"></div>
 
-    <div class="viz-container">
-      <h3>Chart 4: Pie/Donut (School Type by Selected Quarter)</h3>
-      <div id="viz4"></div>
-    </div>
+    <h2>Institutional Applicants by State (Altair Scatter)</h2>
+    <div id="altair-scatter"></div>
 
-    <div class="viz-container">
-      <h3>Chart 5: Stacked Bar Chart (Dep vs. Ind for Q1..Q5)</h3>
-      <div id="viz5"></div>
-    </div>
-    
-    <div class="viz-container">
-      <h3>Chart 6: Map Visualization (Selected Quarter Total by State)</h3>
-      <div id="viz6"></div>
-    </div>
-  </section>
+    <h2>Distribution of FAFSA Applications (Altair Histogram)</h2>
+    <div id="altair-histogram"></div>
+  </div>
 
-  </main>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://unpkg.com/topojson-client@3"></script>
   <script src="visualize.js"></script>
 </body>
 </html>
