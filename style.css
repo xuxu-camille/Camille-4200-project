@@ -66,3 +66,20 @@ svg {
   height: auto;
   display: block;
 }
+
+.tooltip {
+  font-size: 12px;
+  fill: #333;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 5px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+#state-selector {
+  display: block;
+  margin: 0 auto 20px auto;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
