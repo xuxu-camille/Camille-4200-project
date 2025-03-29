@@ -1,102 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Enrollment Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-        }
-        .chart-container {
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 5px;
-            background: #f9f9f9;
-        }
-        .chart-title {
-            text-align: center;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
-        .tab-buttons {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-        .tab-button {
-            padding: 8px 15px;
-            margin: 0 5px;
-            cursor: pointer;
-            background: #eee;
-            border: none;
-            border-radius: 4px;
-        }
-        .tab-button.active {
-            background: #1f77b4;
-            color: white;
-        }
-        .tooltip {
-            position: absolute;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            border-radius: 4px;
-            pointer-events: none;
-            font-size: 12px;
-        }
-    </style>
-    <!-- Load D3.js -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <!-- Load Vega-Lite (for Altair) -->
-    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <meta charset="UTF-8" />
+  <title>Data Information</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <h1>Student Enrollment Dashboard</h1>
-    
-    <div class="tab-buttons">
-        <button class="tab-button active" data-quarter="Q1">Q1</button>
-        <button class="tab-button" data-quarter="Q2">Q2</button>
-        <button class="tab-button" data-quarter="Q3">Q3</button>
-        <button class="tab-button" data-quarter="Q4">Q4</button>
-        <button class="tab-button" data-quarter="Q5">Q5</button>
+  <header>
+    <h1>Visualization</h1>
+    <nav>
+        <a href=" ">Home</a >
+        <a href="Data_Information.html">Data Information</a >
+        <a href="Visualizations.html">Visualizations</a >
+        <a href="Conclusion.html">Conclusion</a >
+    </nav>
+  </header>
+
+  <main>
+    <h2>Visualizations</h2>
+
+    <!-- Quarter Tabs -->
+    <div id="quarterTabs">
+      <button class="tab-button active" data-quarter="Q1">Q1</button>
+      <button class="tab-button" data-quarter="Q2">Q2</button>
+      <button class="tab-button" data-quarter="Q3">Q3</button>
+      <button class="tab-button" data-quarter="Q4">Q4</button>
+      <button class="tab-button" data-quarter="Q5">Q5</button>
+    </div>
+
+    <div class="viz-container">
+      <h3>Chart 1: Bar Chart (Top 10 Schools by Selected Quarter)</h3>
+      <div id="viz1"></div>
+    </div>
+
+    <div class="viz-container">
+      <h3>Chart 2: Line Chart (Aggregated Q1–Q5)</h3>
+      <div id="viz2"></div>
+    </div>
+
+    <div class="viz-container">
+      <h3>Chart 3: Scatter Plot (Dependent vs. Independent in Selected Quarter)</h3>
+      <div id="viz3"></div>
+    </div>
+
+    <div class="viz-container">
+      <h3>Chart 4: Pie/Donut (School Type by Selected Quarter)</h3>
+      <div id="viz4"></div>
+    </div>
+
+    <div class="viz-container">
+      <h3>Chart 5: Stacked Bar Chart (Dep vs. Ind for Q1..Q5)</h3>
+      <div id="viz5"></div>
     </div>
     
-    <div class="dashboard">
-        <!-- Map Visualization -->
-        <div class="chart-container">
-            <div class="chart-title">Student Distribution by State</div>
-            <div id="viz1"></div>
-        </div>
-        
-        <!-- Stacked Bar Chart -->
-        <div class="chart-container">
-            <div class="chart-title">Dependent vs Independent Students</div>
-            <div id="viz2"></div>
-        </div>
-        
-        <!-- Bar Chart (Top Schools) -->
-        <div class="chart-container">
-            <div class="chart-title">Top Schools by Enrollment</div>
-            <div id="viz3"></div>
-        </div>
-        
-        <!-- Scatter Plot (Altair) -->
-        <div class="chart-container">
-            <div class="chart-title">Quarterly Growth Analysis</div>
-            <div id="viz5"></div>
-        </div>
+    <div class="viz-container">
+      <h3>Chart 6: Map Visualization (Selected Quarter Total by State)</h3>
+      <div id="viz6"></div>
     </div>
-    
-    <!-- Your JavaScript file -->
-    <script src="visualize.js"></script>
+  </section>
+
+  </main>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+  <script src="visualize.js"></script>
 </body>
 </html>
