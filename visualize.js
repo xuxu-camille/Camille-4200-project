@@ -8,7 +8,7 @@ const tooltip = d3.select("body")
 
 let globalData = [];
 let selectedQuarter = "Q1";
-let selectedSchool = null;
+let selectedState = null;
 
 const quarterColor = {
   Q1: "#69b3a2",
@@ -19,26 +19,22 @@ const quarterColor = {
 };
 
 /*********************************************
- * Utility Functions
- *********************************************/
-function clearContainer(id) {
-  d3.select(id).selectAll("*").remove();
-}
-
-function formatNumber(num) {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-/*********************************************
- * Visualization 1: Map (D3)
- * Shows school locations or regional distribution
+ * Visualization 1: Map (D3) - Total by State
  *********************************************/
 function drawMap() {
   clearContainer("#viz1");
   
-  // If we had geographic data, we would use actual map coordinates
-  // For this example, we'll create a simulated regional distribution
-  
+  // First aggregate data by state for the selected quarter
+  const stateData = {};
+  globalData.forEach(d => {
+    const state = d.State || "Unknown";
+    const value = +d[`Quarterly Total_${selectedQuarter}`] || 0;
+    if (!stateData[state]) {
+      stateData[state] = 0;
+    }
+    stateData[state] += value;
+  });
+
   const margin = { top: 30, right: 30, bottom: 30, left: 30 },
         width = 600 - margin.left - margin.right,
         height = 400 - margin.top - margin.bottom;
@@ -50,34 +46,33 @@ function drawMap() {
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // Simulate regions (in a real app, we'd use actual geoJSON)
-  const regions = [
-    { name: "North", x: 100, y: 50, count: 0 },
-    { name: "South", x: 100, y: 200, count: 0 },
-    { name: "East", x: 300, y: 100, count: 0 },
-    { name: "West", x: 400, y: 250, count: 0 },
-    { name: "Central", x: 250, y: 180, count: 0 }
+  // Load US states GeoJSON (would need to be included in your project)
+  // This is a simplified example - in practice you'd load actual GeoJSON
+  const states = [
+    { id: "CA", name: "California", value: stateData["CA"] || 0 },
+    { id: "TX", name: "Texas", value: stateData["TX"] || 0 },
+    { id: "NY", name: "New York", value: stateData["NY"] || 0 },
+    // Add more states as needed
   ];
 
-  // Count schools per region (simulated)
-  regions.forEach(region => {
-    region.count = Math.floor(Math.random() * 15) + 5; // Random count for demo
-  });
+  // Create a color scale
+  const colorScale = d3.scaleSequential(d3.interpolateBlues)
+    .domain([0, d3.max(Object.values(stateData))]);
 
-  // Draw regions
-  svg.selectAll(".region")
-    .data(regions)
+  // Draw state rectangles (simplified - would use actual paths from GeoJSON)
+  svg.selectAll(".state")
+    .data(states)
     .enter()
-    .append("circle")
-    .attr("cx", d => d.x)
-    .attr("cy", d => d.y)
-    .attr("r", d => d.count * 2)
-    .attr("fill", "#1f77b4")
-    .attr("opacity", 0.6)
+    .append("rect")
+    .attr("x", (d, i) => (i % 4) * 120)
+    .attr("y", (d, i) => Math.floor(i / 4) * 80)
+    .attr("width", 100)
+    .attr("height", 60)
+    .attr("fill", d => colorScale(d.value))
     .attr("stroke", "#fff")
     .on("mouseover", (event, d) => {
       tooltip.style("opacity", 1)
-             .html(`Region: ${d.name}<br>Schools: ${d.count}`);
+             .html(`State: ${d.name}<br>Total Students: ${formatNumber(d.value)}`);
     })
     .on("mousemove", (event) => {
       tooltip.style("left", (event.pageX + 10) + "px")
@@ -87,40 +82,43 @@ function drawMap() {
       tooltip.style("opacity", 0);
     })
     .on("click", (event, d) => {
-      // Highlight schools from this region in other charts
-      highlightRegion(d.name);
+      selectedState = d.id;
+      updateAllVisualizations();
     });
 
-  // Add region labels
-  svg.selectAll(".region-label")
-    .data(regions)
+  // Add state labels
+  svg.selectAll(".state-label")
+    .data(states)
     .enter()
     .append("text")
-    .attr("x", d => d.x)
-    .attr("y", d => d.y - 10)
+    .attr("x", (d, i) => (i % 4) * 120 + 50)
+    .attr("y", (d, i) => Math.floor(i / 4) * 80 + 30)
     .attr("text-anchor", "middle")
-    .text(d => d.name)
+    .text(d => d.id)
     .style("font-size", "12px")
     .style("fill", "#333");
 }
 
-// Function to highlight schools from a region
-function highlightRegion(region) {
-  // In a real implementation, we would filter data by region
-  console.log(`Schools from ${region} region highlighted`);
-  // This would update other visualizations to focus on this region
-}
-
 /*********************************************
- * Visualization 2: Histogram (D3)
- * Shows distribution of student counts
+ * Visualization 2: Stacked Bar Chart (D3)
+ * Dependent vs Independent for Q1-Q5
  *********************************************/
-function drawHistogram(q) {
+function drawStackedBarChart() {
   clearContainer("#viz2");
   
-  const col = "Quarterly Total_" + q;
-  const values = globalData.map(d => +d[col]).filter(d => !isNaN(d));
-  
+  // Prepare data - sum dependent and independent students per quarter
+  const quarters = ["Q1", "Q2", "Q3", "Q4", "Q5"];
+  const data = quarters.map(q => {
+    const dep = d3.sum(globalData, d => +d[`Dependent Students_${q}`] || 0);
+    const ind = d3.sum(globalData, d => +d[`Independent Students_${q}`] || 0);
+    return {
+      quarter: q,
+      dependent: dep,
+      independent: ind,
+      total: dep + ind
+    };
+  });
+
   const margin = { top: 30, right: 30, bottom: 50, left: 60 },
         width = 600 - margin.left - margin.right,
         height = 400 - margin.top - margin.bottom;
@@ -132,327 +130,85 @@ function drawHistogram(q) {
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // Create bins
-  const maxVal = d3.max(values);
-  const bins = d3.bin().thresholds(20)(values);
+  // Stack the data
+  const stack = d3.stack()
+    .keys(["dependent", "independent"])
+    .order(d3.stackOrderNone)
+    .offset(d3.stackOffsetNone);
 
-  // X scale
-  const x = d3.scaleLinear()
-    .domain([0, maxVal])
-    .range([0, width]);
-  
-  // Y scale
+  const stackedData = stack(data);
+
+  // Scales
+  const x = d3.scaleBand()
+    .domain(quarters)
+    .range([0, width])
+    .padding(0.2);
+
   const y = d3.scaleLinear()
-    .domain([0, d3.max(bins, d => d.length)])
+    .domain([0, d3.max(data, d => d.total)])
     .range([height, 0]);
+
+  // Color scale
+  const color = d3.scaleOrdinal()
+    .domain(["dependent", "independent"])
+    .range(["#1f77b4", "#ff7f0e"]);
+
+  // Create groups for each series
+  const groups = svg.selectAll("g.layer")
+    .data(stackedData)
+    .enter()
+    .append("g")
+    .attr("class", "layer")
+    .attr("fill", d => color(d.key));
+
+  // Add rectangles
+  groups.selectAll("rect")
+    .data(d => d)
+    .enter()
+    .append("rect")
+    .attr("x", d => x(d.data.quarter))
+    .attr("y", d => y(d[1]))
+    .attr("height", d => y(d[0]) - y(d[1]))
+    .attr("width", x.bandwidth())
+    .on("mouseover", (event, d) => {
+      const type = d3.select(event.currentTarget.parentNode).datum().key;
+      tooltip.style("opacity", 1)
+             .html(`Quarter: ${d.data.quarter}<br>${type}: ${formatNumber(d.data[type])}`);
+    })
+    .on("mousemove", (event) => {
+      tooltip.style("left", (event.pageX + 10) + "px")
+             .style("top", (event.pageY) + "px");
+    })
+    .on("mouseout", () => {
+      tooltip.style("opacity", 0);
+    });
 
   // Add axes
   svg.append("g")
     .attr("transform", `translate(0,${height})`)
     .call(d3.axisBottom(x));
-  
+
   svg.append("g")
     .call(d3.axisLeft(y));
 
-  // Add bars
-  svg.selectAll("rect")
-    .data(bins)
-    .enter()
-    .append("rect")
-    .attr("x", d => x(d.x0) + 1)
-    .attr("y", d => y(d.length))
-    .attr("width", d => x(d.x1) - x(d.x0) - 1)
-    .attr("height", d => height - y(d.length))
-    .attr("fill", quarterColor[q])
-    .on("mouseover", (event, d) => {
-      tooltip.style("opacity", 1)
-             .html(`Range: ${formatNumber(d.x0)}-${formatNumber(d.x1)}<br>Schools: ${d.length}`);
-    })
-    .on("mousemove", (event) => {
-      tooltip.style("left", (event.pageX + 10) + "px")
-             .style("top", (event.pageY) + "px");
-    })
-    .on("mouseout", () => {
-      tooltip.style("opacity", 0);
-    });
+  // Add legend
+  const legend = svg.append("g")
+    .attr("transform", `translate(${width - 100},0)`);
 
-  // Add title
-  svg.append("text")
-    .attr("x", width / 2)
-    .attr("y", -10)
-    .attr("text-anchor", "middle")
-    .text(`Distribution of Student Counts (${q})`)
-    .style("font-size", "14px");
-}
+  ["dependent", "independent"].forEach((key, i) => {
+    legend.append("rect")
+      .attr("x", 0)
+      .attr("y", i * 20)
+      .attr("width", 15)
+      .attr("height", 15)
+      .attr("fill", color(key));
 
-/*********************************************
- * Visualization 3: Bar Chart (D3)
- * Top schools by enrollment
- *********************************************/
-function drawBarChart(q) {
-  clearContainer("#viz3");
-  const col = "Quarterly Total_" + q;
-
-  const data = [...globalData]
-    .sort((a, b) => d3.descending(+a[col], +b[col]))
-    .slice(0, 10);
-
-  const margin = { top: 30, right: 30, bottom: 100, left: 80 },
-        width = 600 - margin.left - margin.right,
-        height = 400 - margin.top - margin.bottom;
-
-  const svg = d3.select("#viz3")
-    .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
-
-  const x = d3.scaleBand()
-    .domain(data.map(d => d.School))
-    .range([0, width])
-    .padding(0.2);
-
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(data, d => +d[col]) || 0])
-    .range([height, 0]);
-
-  svg.append("g")
-     .attr("transform", `translate(0,${height})`)
-     .call(d3.axisBottom(x))
-     .selectAll("text")
-     .attr("transform", "translate(0,10)rotate(-45)")
-     .style("text-anchor", "end");
-
-  svg.append("g").call(d3.axisLeft(y));
-
-  const bars = svg.selectAll("rect")
-    .data(data)
-    .join("rect")
-    .attr("x", d => x(d.School))
-    .attr("y", height)
-    .attr("width", x.bandwidth())
-    .attr("height", 0)
-    .attr("fill", quarterColor[q]);
-
-  bars.transition()
-    .duration(800)
-    .delay((d, i) => i * 50)
-    .attr("y", d => y(+d[col]))
-    .attr("height", d => height - y(+d[col]));
-
-  // Enhanced interaction - highlight school across all visualizations
-  bars.on("mouseover", (event, d) => {
-      tooltip.style("opacity", 1)
-             .html(`School: ${d.School}<br>${q} Total: ${formatNumber(d[col])}`);
-      highlightSchool(d.School);
-    })
-    .on("mousemove", (event) => {
-      tooltip.style("left", (event.pageX + 10) + "px")
-             .style("top", (event.pageY) + "px");
-    })
-    .on("mouseout", () => {
-      tooltip.style("opacity", 0);
-      resetHighlight();
-    })
-    .on("click", (event, d) => {
-      selectedSchool = d.School;
-      updateAllVisualizations();
-    });
-}
-
-/*********************************************
- * Visualization 4: Scatter Plot (D3)
- * Dependent vs Independent Students
- *********************************************/
-function drawScatterChart(q) {
-  clearContainer("#viz4");
-  const depCol = "Dependent Students_" + q;
-  const indCol = "Independent Students_" + q;
-
-  const data = globalData.map(d => ({
-    school: d.School,
-    dep: +d[depCol],
-    ind: +d[indCol],
-    total: +d["Quarterly Total_" + q]
-  })).filter(d => !isNaN(d.dep) && !isNaN(d.ind));
-
-  const margin = { top: 30, right: 30, bottom: 50, left: 60 },
-        width = 600 - margin.left - margin.right,
-        height = 400 - margin.top - margin.bottom;
-
-  const svg = d3.select("#viz4")
-    .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
-
-  const x = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.dep)])
-    .range([0, width]);
-  
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.ind)])
-    .range([height, 0]);
-
-  svg.append("g")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x).tickFormat(d3.format(".2s")));
-  
-  svg.append("g")
-    .call(d3.axisLeft(y).tickFormat(d3.format(".2s")));
-
-  // Add circles
-  const circles = svg.selectAll("circle")
-    .data(data)
-    .join("circle")
-    .attr("cx", d => x(d.dep))
-    .attr("cy", d => y(d.ind))
-    .attr("r", d => Math.sqrt(d.total) / 10) // Size by total students
-    .attr("fill", quarterColor[q])
-    .attr("opacity", 0.7)
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 0.5);
-
-  // Add interaction
-  circles.on("mouseover", (event, d) => {
-      tooltip.style("opacity", 1)
-             .html(`School: ${d.school}<br>Dependent: ${formatNumber(d.dep)}<br>Independent: ${formatNumber(d.ind)}`);
-      highlightSchool(d.school);
-    })
-    .on("mousemove", (event) => {
-      tooltip.style("left", (event.pageX + 10) + "px")
-             .style("top", (event.pageY) + "px");
-    })
-    .on("mouseout", () => {
-      tooltip.style("opacity", 0);
-      resetHighlight();
-    })
-    .on("click", (event, d) => {
-      selectedSchool = d.school;
-      updateAllVisualizations();
-    });
-
-  // Add labels
-  svg.append("text")
-    .attr("x", width / 2)
-    .attr("y", height + margin.bottom - 10)
-    .attr("text-anchor", "middle")
-    .text("Dependent Students");
-  
-  svg.append("text")
-    .attr("transform", "rotate(-90)")
-    .attr("y", -margin.left + 20)
-    .attr("x", -height / 2)
-    .attr("text-anchor", "middle")
-    .text("Independent Students");
-}
-
-/*********************************************
- * Visualization 5: Scatter Plot (Altair)
- * Quarter-over-quarter growth comparison
- *********************************************/
-function drawAltairScatterPlot() {
-  clearContainer("#viz5");
-  
-  // Prepare data for Altair
-  const altairData = globalData.map(d => ({
-    School: d.School,
-    Q1: +d["Quarterly Total_Q1"],
-    Q2: +d["Quarterly Total_Q2"],
-    Q3: +d["Quarterly Total_Q3"],
-    Q4: +d["Quarterly Total_Q4"],
-    Q5: +d["Quarterly Total_Q5"]
-  })).filter(d => !isNaN(d.Q1) && !isNaN(d.Q5));
-  
-  // Calculate growth from Q1 to Q5
-  altairData.forEach(d => {
-    d.Growth = d.Q5 - d.Q1;
-    d.GrowthRate = (d.Q5 - d.Q1) / d.Q1;
+    legend.append("text")
+      .attr("x", 20)
+      .attr("y", i * 20 + 12)
+      .text(key)
+      .style("font-size", "12px");
   });
-  
-  // Create Vega-Lite spec
-  const spec = {
-    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-    "width": 600,
-    "height": 400,
-    "data": { "values": altairData },
-    "mark": {
-      "type": "circle",
-      "opacity": 0.7,
-      "stroke": "#fff",
-      "strokeWidth": 0.5
-    },
-    "encoding": {
-      "x": {
-        "field": "Q1",
-        "type": "quantitative",
-        "title": "Q1 Enrollment",
-        "scale": { "type": "log" }
-      },
-      "y": {
-        "field": "GrowthRate",
-        "type": "quantitative",
-        "title": "Growth Rate (Q1 to Q5)",
-        "scale": { "domain": [-1, 1] }
-      },
-      "size": {
-        "field": "Q5",
-        "type": "quantitative",
-        "title": "Q5 Enrollment"
-      },
-      "color": {
-        "field": "Growth",
-        "type": "quantitative",
-        "scale": { "scheme": "redblue", "reverse": true },
-        "title": "Growth (Q5 - Q1)"
-      },
-      "tooltip": [
-        {"field": "School", "type": "nominal", "title": "School"},
-        {"field": "Q1", "type": "quantitative", "title": "Q1", "format": ","},
-        {"field": "Q5", "type": "quantitative", "title": "Q5", "format": ","},
-        {"field": "Growth", "type": "quantitative", "title": "Growth", "format": ","},
-        {"field": "GrowthRate", "type": "quantitative", "title": "Growth Rate", "format": ".2%"}
-      ]
-    },
-    "selection": {
-      "highlight": {
-        "type": "single",
-        "on": "mouseover",
-        "empty": "none"
-      }
-    },
-    "config": {
-      "view": { "stroke": "transparent" }
-    }
-  };
-  
-  // Embed the visualization
-  vegaEmbed('#viz5', spec, { actions: false })
-    .then(result => {
-      // Add interaction handler
-      result.view.addEventListener('click', (event, item) => {
-        if (item && item.datum && item.datum.School) {
-          selectedSchool = item.datum.School;
-          updateAllVisualizations();
-        }
-      });
-    })
-    .catch(console.error);
-}
-
-/*********************************************
- * Highlight Functions
- *********************************************/
-function highlightSchool(school) {
-  // In a real implementation, we would highlight this school across all charts
-  console.log(`Highlighting ${school} across visualizations`);
-}
-
-function resetHighlight() {
-  // Reset highlights across all charts
-  console.log("Resetting highlights");
 }
 
 /*********************************************
@@ -460,9 +216,9 @@ function resetHighlight() {
  *********************************************/
 function updateAllVisualizations() {
   drawMap();
+  drawStackedBarChart();
   drawHistogram(selectedQuarter);
   drawBarChart(selectedQuarter);
-  drawScatterChart(selectedQuarter);
   drawAltairScatterPlot();
 }
 
