@@ -308,3 +308,85 @@ d3.csv("cleaned.csv").then(data => {
     updateAllVisualizations();
   });
 });
+/*********************************************
+ * Visualization 4: Scatter Plot (Altair)
+ * Quarterly Growth Analysis
+ *********************************************/
+function drawAltairScatterPlot() {
+  clearContainer("#viz5");
+  
+  // Prepare data for Altair
+  const altairData = globalData.map(d => ({
+    School: d.School,
+    Q1: +d["Quarterly Total_Q1"] || 0,
+    Q2: +d["Quarterly Total_Q2"] || 0,
+    Q3: +d["Quarterly Total_Q3"] || 0,
+    Q4: +d["Quarterly Total_Q4"] || 0,
+    Q5: +d["Quarterly Total_Q5"] || 0,
+    State: d.State || "Unknown"
+  }));
+
+  // Calculate growth metrics
+  altairData.forEach(d => {
+    d.Growth = d.Q5 - d.Q1;
+    d.GrowthRate = d.Q1 > 0 ? (d.Q5 - d.Q1) / d.Q1 : 0;
+  });
+
+  // Create Vega-Lite specification
+  const spec = {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "width": 600,
+    "height": 400,
+    "data": { "values": altairData },
+    "mark": {
+      "type": "circle",
+      "opacity": 0.7,
+      "stroke": "#fff",
+      "strokeWidth": 0.5
+    },
+    "encoding": {
+      "x": {
+        "field": "Q1",
+        "type": "quantitative",
+        "title": "Q1 Enrollment",
+        "scale": { "type": "log" }
+      },
+      "y": {
+        "field": "GrowthRate",
+        "type": "quantitative",
+        "title": "Growth Rate (Q1 to Q5)",
+        "scale": { "domain": [-1, 2] }
+      },
+      "size": {
+        "field": "Q5",
+        "type": "quantitative",
+        "title": "Q5 Enrollment"
+      },
+      "color": {
+        "field": "Growth",
+        "type": "quantitative",
+        "scale": { "scheme": "redblue", "reverse": true },
+        "title": "Growth (Q5 - Q1)"
+      },
+      "tooltip": [
+        {"field": "School", "type": "nominal", "title": "School"},
+        {"field": "State", "type": "nominal", "title": "State"},
+        {"field": "Q1", "type": "quantitative", "title": "Q1 Enrollment", "format": ","},
+        {"field": "Q5", "type": "quantitative", "title": "Q5 Enrollment", "format": ","},
+        {"field": "Growth", "type": "quantitative", "title": "Absolute Growth", "format": ","},
+        {"field": "GrowthRate", "type": "quantitative", "title": "Growth Rate", "format": ".2%"}
+      ]
+    },
+    "config": {
+      "view": { "stroke": "transparent" }
+    }
+  };
+  
+  // Embed the visualization
+  vegaEmbed('#viz5', spec, { 
+    actions: false,
+    renderer: "canvas"
+  }).catch(error => {
+    console.error("Error rendering Altair chart:", error);
+  });
+}
