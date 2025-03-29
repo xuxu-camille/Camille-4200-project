@@ -19,23 +19,28 @@ const quarterColor = {
 };
 
 /*********************************************
- * Visualization 1: Map (D3) - Total by State
+ * Utility Functions
  *********************************************/
-function drawMap() {
-  clearContainer("#viz1");
-  
-  // First aggregate data by state for the selected quarter
-  const stateData = {};
-  globalData.forEach(d => {
-    const state = d.State || "Unknown";
-    const value = +d[`Quarterly Total_${selectedQuarter}`] || 0;
-    if (!stateData[state]) {
-      stateData[state] = 0;
-    }
-    stateData[state] += value;
-  });
+function clearContainer(id) {
+  d3.select(id).selectAll("*").remove();
+}
 
-  const margin = { top: 30, right: 30, bottom: 30, left: 30 },
+function formatNumber(num) {
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+/*********************************************
+ * Visualization 1: Bar Chart (Top 10 Schools)
+ *********************************************/
+function drawBarChart(q) {
+  clearContainer("#viz1");
+  const col = `Quarterly Total_${q}`;
+
+  const data = [...globalData]
+    .sort((a, b) => d3.descending(+a[col], +b[col]))
+    .slice(0, 10);
+
+  const margin = { top: 30, right: 30, bottom: 100, left: 80 },
         width = 600 - margin.left - margin.right,
         height = 400 - margin.top - margin.bottom;
 
@@ -46,33 +51,40 @@ function drawMap() {
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // Load US states GeoJSON (would need to be included in your project)
-  // This is a simplified example - in practice you'd load actual GeoJSON
-  const states = [
-    { id: "CA", name: "California", value: stateData["CA"] || 0 },
-    { id: "TX", name: "Texas", value: stateData["TX"] || 0 },
-    { id: "NY", name: "New York", value: stateData["NY"] || 0 },
-    // Add more states as needed
-  ];
+  // X axis
+  const x = d3.scaleBand()
+    .range([0, width])
+    .domain(data.map(d => d.School))
+    .padding(0.2);
 
-  // Create a color scale
-  const colorScale = d3.scaleSequential(d3.interpolateBlues)
-    .domain([0, d3.max(Object.values(stateData))]);
+  svg.append("g")
+    .attr("transform", `translate(0,${height})`)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .attr("transform", "translate(-10,10)rotate(-45)")
+    .style("text-anchor", "end");
 
-  // Draw state rectangles (simplified - would use actual paths from GeoJSON)
-  svg.selectAll(".state")
-    .data(states)
+  // Y axis
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(data, d => +d[col])])
+    .range([height, 0]);
+
+  svg.append("g")
+    .call(d3.axisLeft(y));
+
+  // Bars
+  svg.selectAll("mybar")
+    .data(data)
     .enter()
     .append("rect")
-    .attr("x", (d, i) => (i % 4) * 120)
-    .attr("y", (d, i) => Math.floor(i / 4) * 80)
-    .attr("width", 100)
-    .attr("height", 60)
-    .attr("fill", d => colorScale(d.value))
-    .attr("stroke", "#fff")
+    .attr("x", d => x(d.School))
+    .attr("y", d => y(+d[col]))
+    .attr("width", x.bandwidth())
+    .attr("height", d => height - y(+d[col]))
+    .attr("fill", quarterColor[q])
     .on("mouseover", (event, d) => {
       tooltip.style("opacity", 1)
-             .html(`State: ${d.name}<br>Total Students: ${formatNumber(d.value)}`);
+             .html(`<strong>${d.School}</strong><br>Total: ${formatNumber(d[col])}`);
     })
     .on("mousemove", (event) => {
       tooltip.style("left", (event.pageX + 10) + "px")
@@ -80,42 +92,31 @@ function drawMap() {
     })
     .on("mouseout", () => {
       tooltip.style("opacity", 0);
-    })
-    .on("click", (event, d) => {
-      selectedState = d.id;
-      updateAllVisualizations();
     });
 
-  // Add state labels
-  svg.selectAll(".state-label")
-    .data(states)
-    .enter()
-    .append("text")
-    .attr("x", (d, i) => (i % 4) * 120 + 50)
-    .attr("y", (d, i) => Math.floor(i / 4) * 80 + 30)
+  // Add title
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", -10)
     .attr("text-anchor", "middle")
-    .text(d => d.id)
-    .style("font-size", "12px")
-    .style("fill", "#333");
+    .style("font-size", "16px")
+    .text(`Top 10 Schools (${q})`);
 }
 
 /*********************************************
- * Visualization 2: Stacked Bar Chart (D3)
+ * Visualization 2: Stacked Bar Chart
  * Dependent vs Independent for Q1-Q5
  *********************************************/
 function drawStackedBarChart() {
   clearContainer("#viz2");
   
-  // Prepare data - sum dependent and independent students per quarter
+  // Prepare data
   const quarters = ["Q1", "Q2", "Q3", "Q4", "Q5"];
   const data = quarters.map(q => {
-    const dep = d3.sum(globalData, d => +d[`Dependent Students_${q}`] || 0);
-    const ind = d3.sum(globalData, d => +d[`Independent Students_${q}`] || 0);
     return {
       quarter: q,
-      dependent: dep,
-      independent: ind,
-      total: dep + ind
+      dependent: d3.sum(globalData, d => +d[`Dependent Students_${q}`] || 0),
+      independent: d3.sum(globalData, d => +d[`Independent Students_${q}`] || 0)
     };
   });
 
@@ -133,8 +134,7 @@ function drawStackedBarChart() {
   // Stack the data
   const stack = d3.stack()
     .keys(["dependent", "independent"])
-    .order(d3.stackOrderNone)
-    .offset(d3.stackOffsetNone);
+    .order(d3.stackOrderNone);
 
   const stackedData = stack(data);
 
@@ -145,7 +145,7 @@ function drawStackedBarChart() {
     .padding(0.2);
 
   const y = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.total)])
+    .domain([0, d3.max(stackedData[stackedData.length - 1], d => d[1])])
     .range([height, 0]);
 
   // Color scale
@@ -153,7 +153,7 @@ function drawStackedBarChart() {
     .domain(["dependent", "independent"])
     .range(["#1f77b4", "#ff7f0e"]);
 
-  // Create groups for each series
+  // Create groups
   const groups = svg.selectAll("g.layer")
     .data(stackedData)
     .enter()
@@ -161,7 +161,7 @@ function drawStackedBarChart() {
     .attr("class", "layer")
     .attr("fill", d => color(d.key));
 
-  // Add rectangles
+  // Add bars
   groups.selectAll("rect")
     .data(d => d)
     .enter()
@@ -191,35 +191,101 @@ function drawStackedBarChart() {
   svg.append("g")
     .call(d3.axisLeft(y));
 
-  // Add legend
-  const legend = svg.append("g")
-    .attr("transform", `translate(${width - 100},0)`);
+  // Add title
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", -10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "16px")
+    .text("Dependent vs Independent Students by Quarter");
+}
 
-  ["dependent", "independent"].forEach((key, i) => {
-    legend.append("rect")
-      .attr("x", 0)
-      .attr("y", i * 20)
-      .attr("width", 15)
-      .attr("height", 15)
-      .attr("fill", color(key));
-
-    legend.append("text")
-      .attr("x", 20)
-      .attr("y", i * 20 + 12)
-      .text(key)
-      .style("font-size", "12px");
+/*********************************************
+ * Visualization 3: Map (Total by State)
+ *********************************************/
+function drawMap() {
+  clearContainer("#viz3");
+  
+  // Aggregate data by state
+  const stateData = {};
+  globalData.forEach(d => {
+    const state = d.State || "Unknown";
+    const value = +d[`Quarterly Total_${selectedQuarter}`] || 0;
+    stateData[state] = (stateData[state] || 0) + value;
   });
+
+  const margin = { top: 30, right: 30, bottom: 30, left: 30 },
+        width = 600 - margin.left - margin.right,
+        height = 400 - margin.top - margin.bottom;
+
+  const svg = d3.select("#viz3")
+    .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Color scale
+  const colorScale = d3.scaleSequential(d3.interpolateBlues)
+    .domain([0, d3.max(Object.values(stateData))]);
+
+  // For a real implementation, you would load actual US GeoJSON data
+  // Here's a simplified version with state abbreviations
+  const states = Object.keys(stateData).map(state => ({
+    id: state,
+    name: state,
+    value: stateData[state]
+  }));
+
+  // Draw state representations (simplified)
+  svg.selectAll(".state")
+    .data(states)
+    .enter()
+    .append("circle")
+    .attr("cx", (d, i) => 50 + (i % 10) * 50)
+    .attr("cy", (d, i) => 50 + Math.floor(i / 10) * 50)
+    .attr("r", d => Math.sqrt(d.value) / 10)
+    .attr("fill", d => colorScale(d.value))
+    .attr("stroke", "#fff")
+    .on("mouseover", (event, d) => {
+      tooltip.style("opacity", 1)
+             .html(`State: ${d.name}<br>Total: ${formatNumber(d.value)}`);
+    })
+    .on("mousemove", (event) => {
+      tooltip.style("left", (event.pageX + 10) + "px")
+             .style("top", (event.pageY) + "px");
+    })
+    .on("mouseout", () => {
+      tooltip.style("opacity", 0);
+    });
+
+  // Add state labels
+  svg.selectAll(".state-label")
+    .data(states)
+    .enter()
+    .append("text")
+    .attr("x", (d, i) => 50 + (i % 10) * 50)
+    .attr("y", (d, i) => 50 + Math.floor(i / 10) * 50 - 10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "10px")
+    .text(d => d.id);
+
+  // Add title
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", -10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "16px")
+    .text(`Student Distribution by State (${selectedQuarter})`);
 }
 
 /*********************************************
  * Update All Visualizations
  *********************************************/
 function updateAllVisualizations() {
-  drawMap();
-  drawStackedBarChart();
-  drawHistogram(selectedQuarter);
   drawBarChart(selectedQuarter);
-  drawAltairScatterPlot();
+  drawStackedBarChart();
+  drawMap();
 }
 
 /*********************************************
