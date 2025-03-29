@@ -308,14 +308,18 @@ d3.csv("cleaned.csv").then(data => {
     updateAllVisualizations();
   });
 });
-/*********************************************
- * Visualization 4: Scatter Plot (Altair)
- * Quarterly Growth Analysis
- *********************************************/
 function drawAltairScatterPlot() {
+  console.log("Attempting to draw Altair scatter plot..."); 
+  
   clearContainer("#viz5");
   
-  // Prepare data for Altair
+
+  if (!globalData || globalData.length === 0) {
+    console.error("No data available for Altair chart");
+    return;
+  }
+
+
   const altairData = globalData.map(d => ({
     School: d.School,
     Q1: +d["Quarterly Total_Q1"] || 0,
@@ -326,36 +330,32 @@ function drawAltairScatterPlot() {
     State: d.State || "Unknown"
   }));
 
-  // Calculate growth metrics
+  console.log("Sample data for Altair:", altairData.slice(0, 3)); 
+
+  
   altairData.forEach(d => {
     d.Growth = d.Q5 - d.Q1;
     d.GrowthRate = d.Q1 > 0 ? (d.Q5 - d.Q1) / d.Q1 : 0;
   });
 
-  // Create Vega-Lite specification
+
   const spec = {
     "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-    "width": 600,
+    "width": "container",
     "height": 400,
     "data": { "values": altairData },
-    "mark": {
-      "type": "circle",
-      "opacity": 0.7,
-      "stroke": "#fff",
-      "strokeWidth": 0.5
-    },
+    "mark": "circle",
     "encoding": {
       "x": {
-        "field": "Q1",
+        "field": "Q1", 
         "type": "quantitative",
         "title": "Q1 Enrollment",
-        "scale": { "type": "log" }
+        "scale": {"type": "log"}
       },
       "y": {
         "field": "GrowthRate",
         "type": "quantitative",
-        "title": "Growth Rate (Q1 to Q5)",
-        "scale": { "domain": [-1, 2] }
+        "title": "Growth Rate (Q1 to Q5)"
       },
       "size": {
         "field": "Q5",
@@ -365,28 +365,36 @@ function drawAltairScatterPlot() {
       "color": {
         "field": "Growth",
         "type": "quantitative",
-        "scale": { "scheme": "redblue", "reverse": true },
+        "scale": {"scheme": "redblue", "reverse": true},
         "title": "Growth (Q5 - Q1)"
       },
       "tooltip": [
-        {"field": "School", "type": "nominal", "title": "School"},
-        {"field": "State", "type": "nominal", "title": "State"},
-        {"field": "Q1", "type": "quantitative", "title": "Q1 Enrollment", "format": ","},
-        {"field": "Q5", "type": "quantitative", "title": "Q5 Enrollment", "format": ","},
-        {"field": "Growth", "type": "quantitative", "title": "Absolute Growth", "format": ","},
-        {"field": "GrowthRate", "type": "quantitative", "title": "Growth Rate", "format": ".2%"}
+        {"field": "School", "title": "School"},
+        {"field": "State", "title": "State"},
+        {"field": "Q1", "title": "Q1", "format": ","},
+        {"field": "Q5", "title": "Q5", "format": ","},
+        {"field": "Growth", "title": "Growth", "format": ","},
+        {"field": "GrowthRate", "title": "Growth Rate", "format": ".2%"}
       ]
-    },
-    "config": {
-      "view": { "stroke": "transparent" }
     }
   };
-  
-  // Embed the visualization
-  vegaEmbed('#viz5', spec, { 
+
+  console.log("Vega-Lite spec:", spec); 
+
+  vegaEmbed('#viz5', spec, {
     actions: false,
     renderer: "canvas"
-  }).catch(error => {
+  })
+  .then(result => {
+    console.log("Altair chart rendered successfully");
+    result.view.addEventListener('click', (event, item) => {
+      if (item && item.datum) {
+        console.log("Clicked item:", item.datum);
+      }
+    });
+  })
+  .catch(error => {
     console.error("Error rendering Altair chart:", error);
+    d3.select("#viz5").html(`<div class="error">Failed to load chart: ${error.message}</div>`);
   });
 }
