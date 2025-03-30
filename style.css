@@ -66,22 +66,3 @@ h1 {
   pointer-events: none;
   box-shadow: 0 0 5px rgba(0,0,0,0.2);
 }
-
-#altair-scatter .vega-bindings {
-  width: 90%;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 10px;
-  background: #f9f9f9;
-  border-radius: 8px;
-}
-
-#altair-scatter .vega-bind input[type="range"] {
-  width: 100%;
-}
-
-#altair-scatter .vega-bind-name {
-  font-weight: bold;
-  color: #2c3e50;
-  margin-right: 10px;
-}
