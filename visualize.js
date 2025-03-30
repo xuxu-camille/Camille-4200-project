@@ -1,5 +1,52 @@
-let selectedBar = null;
+let currentQuarter = "Q1";
+let globalData = [];
+let selectedBar = null; 
 let selectedState = "All"; 
+
+document.addEventListener("DOMContentLoaded", function () {
+  d3.csv("cleaned.csv").then(data => {
+    globalData = data;
+    init();
+    updateCharts(currentQuarter);
+  });
+
+  document.querySelectorAll(".tab-button").forEach(button => {
+    button.addEventListener("click", function () {
+      document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+      this.classList.add("active");
+      currentQuarter = this.getAttribute("data-quarter");
+      updateCharts(currentQuarter);
+    });
+  });
+});
+
+function init() {
+  // Add filter
+  const states = [...new Set(globalData.map(d => d.State))].sort();
+  d3.select("#scatter-plot")
+    .append("select")
+    .attr("id", "state-selector")
+    .style("display", "none") 
+    .on("change", function() {
+      selectedState = this.value;
+      updateCharts(currentQuarter);
+    })
+    .selectAll("option")
+    .data(["All", ...states])
+    .join("option")
+    .attr("value", d => d)
+    .text(d => d);
+}
+
+function updateCharts(quarter) {
+  drawBarChart(quarter);
+  drawScatterPlot(quarter);
+  drawMapPlotly(quarter);
+  embedAltairScatter(quarter);
+  embedAltairHistogram(quarter);
+  
+  d3.select("#state-selector").style("display", "block");
+}
 
 function drawBarChart(quarter) {
   const col = "Quarterly Total_" + quarter;
@@ -14,11 +61,12 @@ function drawBarChart(quarter) {
     .attr("width", 800)
     .attr("height", 400);
 
-  // Add title
+
   svg.append("text")
     .attr("x", 400)
     .attr("y", 30)
     .attr("text-anchor", "middle")
+    .style("font-weight", "bold")
     .text(`Top 10 Institutions (${quarter})`);
 
   const x = d3.scaleBand()
@@ -30,6 +78,18 @@ function drawBarChart(quarter) {
     .domain([0, d3.max(data, d => +d[col])])
     .range([350, 50]);
 
+  svg.append("g")
+    .attr("transform", "translate(0,350)")
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .attr("transform", "rotate(-40)")
+    .style("text-anchor", "end");
+
+  svg.append("g")
+    .attr("transform", "translate(60,0)")
+    .call(d3.axisLeft(y));
+
+
   svg.selectAll("rect")
     .data(data)
     .join("rect")
@@ -40,7 +100,7 @@ function drawBarChart(quarter) {
     .attr("fill", d => selectedBar === d.School ? "#e74c3c" : "#69b3a2")
     .on("mouseover", function(event, d) {
       d3.select(this).attr("fill", "#3498db");
-      // Show Tooltip
+      // show Tooltip
       svg.append("text")
         .attr("class", "tooltip")
         .attr("x", x(d.School) + x.bandwidth() / 2)
@@ -57,41 +117,48 @@ function drawBarChart(quarter) {
       selectedBar = selectedBar === d.School ? null : d.School;
       updateCharts(currentQuarter);
     });
-
 }
 
 function drawScatterPlot(quarter) {
   const depCol = "Dependent Students_" + quarter;
   const indCol = "Independent Students_" + quarter;
   
-
   const filteredData = selectedState === "All" 
     ? globalData.filter(d => d[depCol] && d[indCol])
     : globalData.filter(d => d[depCol] && d[indCol] && d.State === selectedState);
 
-  d3.select("#scatter-plot").html("");
-  
-
-  const states = [...new Set(globalData.map(d => d.State))].sort();
-  d3.select("#scatter-plot")
-    .append("select")
-    .attr("id", "state-selector")
-    .on("change", function() {
-      selectedState = this.value;
-      updateCharts(currentQuarter);
-    })
-    .selectAll("option")
-    .data(["All", ...states])
-    .join("option")
-    .attr("value", d => d)
-    .text(d => d);
+  d3.select("#scatter-plot").select("svg").remove(); 
 
   const svg = d3.select("#scatter-plot")
-    .append("svg")
+    .insert("svg", ":first-child") 
     .attr("width", 800)
     .attr("height", 400);
 
+  // Add title
+  svg.append("text")
+    .attr("x", 400)
+    .attr("y", 30)
+    .attr("text-anchor", "middle")
+    .style("font-weight", "bold")
+    .text(`Dependent vs Independent (${quarter}${selectedState === "All" ? "" : ` - ${selectedState}`})`);
 
+  const x = d3.scaleLinear()
+    .domain([0, d3.max(filteredData, d => +d[depCol])])
+    .range([60, 750]);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(filteredData, d => +d[indCol])])
+    .range([350, 50]);
+
+  svg.append("g")
+    .attr("transform", "translate(0,350)")
+    .call(d3.axisBottom(x));
+
+  svg.append("g")
+    .attr("transform", "translate(60,0)")
+    .call(d3.axisLeft(y));
+
+  // Add ineractive scatter plot
   svg.selectAll("circle")
     .data(filteredData)
     .join("circle")
@@ -101,7 +168,7 @@ function drawScatterPlot(quarter) {
     .attr("fill", "#1f77b4")
     .on("mouseover", function(event, d) {
       d3.select(this).attr("r", 8);
-      // 显示Tooltip
+      // Show Tooltip
       svg.append("text")
         .attr("class", "tooltip")
         .attr("x", x(+d[depCol]) + 10)
@@ -113,3 +180,7 @@ function drawScatterPlot(quarter) {
       svg.selectAll(".tooltip").remove();
     });
 }
+
+function drawMapPlotly(quarter) { /* original code */ }
+function embedAltairScatter(quarter) { /* original code */ }
+function embedAltairHistogram(quarter) { /* original code */ }
