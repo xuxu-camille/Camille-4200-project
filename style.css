@@ -83,3 +83,24 @@ svg {
   border-radius: 4px;
   border: 1px solid #ddd;
 }
+
+.filter-control {
+  margin: 15px auto;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 900px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+#cutoffRange {
+  width: 100%;
+  margin: 10px 0;
+}
+
+#cutoffValue {
+  font-weight: bold;
+  color: #2c3e50;
+  margin-left: 5px;
+}
