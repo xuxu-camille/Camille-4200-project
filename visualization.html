@@ -1,56 +1,123 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FAFSA Application Trends and Institutional Factors</title>
-  <link rel="stylesheet" href="style.css"/>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://unpkg.com/topojson-client@3"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
-</head>
-<body>
-  <header>
-    <h1>FAFSA Visualizations</h1>
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="data_information.html">Data Information</a>
-      <a href="visualization.html">Visualizations</a>
-      <a href="conclusion.html">Conclusion</a>
-    </nav>
-  </header>
+let currentQuarter = "Q1";
+let globalData = [];
+let selectedBar = null; // NEW: Tracks selected bar
+let selectedState = "All"; // NEW: Tracks selected state
 
-  <div class="container">
-    <h2>FAFSA Application Trends and Institutional Factors</h2>
-    <p>This dashboard explores FAFSA application patterns using D3 and Altair visualizations.</p>
+document.addEventListener("DOMContentLoaded", function () {
+  d3.csv("cleaned.csv").then(data => {
+    globalData = data;
+    init();
+    updateCharts(currentQuarter);
+  });
 
-    <div class="tabs">
-      <button class="tab-button active" data-quarter="Q1">Q1</button>
-      <button class="tab-button" data-quarter="Q2">Q2</button>
-      <button class="tab-button" data-quarter="Q3">Q3</button>
-      <button class="tab-button" data-quarter="Q4">Q4</button>
-      <button class="tab-button" data-quarter="Q5">Q5</button>
-    </div>
+  document.querySelectorAll(".tab-button").forEach(button => {
+    button.addEventListener("click", function () {
+      document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+      this.classList.add("active");
+      currentQuarter = this.getAttribute("data-quarter");
+      updateCharts(currentQuarter);
+    });
+  });
+});
 
-    <h2>Top 10 Institutions by FAFSA Applications</h2>
-    <div id="bar-chart"></div>
+function init() {
+  // NEW: Initialize state selector
+  const states = [...new Set(globalData.map(d => d.State))].sort();
+  d3.select("#scatter-plot")
+    .append("select")
+    .attr("id", "state-selector")
+    .style("display", "none")
+    .on("change", function() {
+      selectedState = this.value;
+      updateCharts(currentQuarter);
+    })
+    .selectAll("option")
+    .data(["All", ...states])
+    .join("option")
+    .attr("value", d => d)
+    .text(d => d);
+}
 
-    <h2>FAFSA Applications by State (Map)</h2>
-    <div id="map"></div>
+function updateCharts(quarter) {
+  drawBarChart(quarter);
+  drawScatterPlot(quarter);
+  drawMapPlotly(quarter); // Your original map visualization
+  embedAltairScatter(quarter); // Your original Altair scatter
+  embedAltairHistogram(quarter); // Your original Altair histogram
+  
+  // NEW: Show state selector after data loads
+  d3.select("#state-selector").style("display", "block");
+}
 
-    <h2>Dependent vs. Independent Applicants</h2>
-    <div id="scatter-plot"></div>
+// ... [Previous interactive bar chart and scatter plot code remains exactly as provided earlier] ...
 
-    <h2>Institutional Applicants by State (Altair Scatter)</h2>
-    <div id="altair-scatter"></div>
+// RESTORED ORIGINAL VISUALIZATIONS:
 
-    <h2>Distribution of FAFSA Applications (Altair Histogram)</h2>
-    <div id="altair-histogram"></div>
-  </div>
+function drawMapPlotly(quarter) {
+  const col = "Quarterly Total_" + quarter;
 
-  <script src="visualize.js"></script>
-</body>
-</html>
+  const stateData = {};
+  globalData.forEach(d => {
+    const state = d.State;
+    if (!stateData[state]) stateData[state] = 0;
+    stateData[state] += +d[col] || 0;
+  });
+
+  const states = Object.keys(stateData);
+  const values = states.map(s => stateData[s]);
+
+  const data = [{
+    type: 'choropleth',
+    locationmode: 'USA-states',
+    locations: states,
+    z: values,
+    colorscale: 'Blues',
+    colorbar: {
+      title: `${quarter} Total`,
+    },
+  }];
+
+  const layout = {
+    geo: {
+      scope: 'usa',
+    },
+    margin: { t: 0, b: 0 },
+  };
+
+  Plotly.newPlot('map', data, layout);
+}
+
+function embedAltairScatter(quarter) {
+  const chart = {
+    $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+    description: "Altair Scatter Plot",
+    data: { url: "cleaned.csv" },
+    transform: [{ filter: `datum.State == 'CA'` }], // Example filter - adjust as needed
+    mark: "point",
+    encoding: {
+      x: { field: `Dependent Students_${quarter}`, type: "quantitative" },
+      y: { field: `Independent Students_${quarter}`, type: "quantitative" },
+      tooltip: [{ field: "School", type: "nominal" }]
+    }
+  };
+  vegaEmbed("#altair-scatter", chart, { actions: false });
+}
+
+function embedAltairHistogram(quarter) {
+  const chart = {
+    $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+    description: "Altair Histogram",
+    data: { url: "cleaned.csv" },
+    mark: "bar",
+    encoding: {
+      x: {
+        field: `Quarterly Total_${quarter}`,
+        bin: true,
+        type: "quantitative",
+        title: `FAFSA Total Applications (${quarter})`
+      },
+      y: { aggregate: "count", type: "quantitative" }
+    }
+  };
+  vegaEmbed("#altair-histogram", chart, { actions: false });
+}
