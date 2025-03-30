@@ -4,19 +4,15 @@ let selectedState = "ALL";
 
 document.addEventListener("DOMContentLoaded", function () {
   d3.csv("cleaned.csv").then(data => {
-    globalData = data.map(d => {
-      // Clean all numeric fields by removing commas
-      Object.keys(d).forEach(key => {
-        if (key.includes("Quarterly") || key.includes("Students")) {
-          d[key] = d[key] ? d[key].replace(/,/g, '') : '0';
-        }
-      });
-      return d;
-    });
-    
+    globalData = data;
     populateStateDropdown();
     init();
     updateCharts(currentQuarter);
+  });
+
+  document.getElementById("cutoffRange").addEventListener("input", function () {
+    document.getElementById("cutoffValue").textContent = this.value;
+    embedAltairScatter(currentQuarter);
   });
 
   document.getElementById("stateDropdown").addEventListener("change", function () {
@@ -52,101 +48,165 @@ function updateCharts(quarter) {
   drawBarChart(quarter);
   drawMapPlotly(quarter);
   drawScatterPlot(quarter);
-  embedAltairScatter(quarter); // This now has the improved cutoff
+  embedAltairScatter(quarter);
   embedAltairHistogram(quarter);
 }
 
-// [Keep all your existing drawBarChart, drawMapPlotly, drawScatterPlot functions exactly as they are]
+function drawBarChart(quarter) {
+  const col = "Quarterly Total_" + quarter;
+  const data = globalData
+    .filter(d => d[col] && !isNaN(parseInt(d[col].replace(/,/g, ''))))
+    .sort((a, b) => parseInt(b[col].replace(/,/g, '')) - parseInt(a[col].replace(/,/g, '')))
+    .slice(0, 10);
+
+  d3.select("#bar-chart").html("");
+  const svg = d3.select("#bar-chart").append("svg").attr("width", 800).attr("height", 400);
+
+  const x = d3.scaleBand().domain(data.map(d => d.School)).range([60, 750]).padding(0.3);
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(data, d => parseInt(d[col].replace(/,/g, '')))])
+    .range([350, 50]);
+
+  svg.append("g")
+    .attr("transform", "translate(0,350)")
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .attr("transform", "rotate(-40)")
+    .style("text-anchor", "end");
+
+  svg.append("g")
+    .attr("transform", "translate(60,0)")
+    .call(d3.axisLeft(y));
+
+  const tooltip = d3.select("#bar-chart").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+  svg.selectAll("rect")
+    .data(data)
+    .join("rect")
+    .attr("x", d => x(d.School))
+    .attr("y", d => y(parseInt(d[col].replace(/,/g, ''))))
+    .attr("width", x.bandwidth())
+    .attr("height", d => 350 - y(parseInt(d[col].replace(/,/g, ''))))
+    .attr("fill", "#69b3a2")
+    .on("mouseover", function (event, d) {
+      d3.select(this).attr("fill", "#4287f5");
+      tooltip.transition().duration(200).style("opacity", 1);
+      tooltip.html(`${d.School}: ${d[col]}`)
+        .style("left", (event.pageX - 80) + "px")
+        .style("top", (event.pageY - 50) + "px");
+    })
+    .on("mouseout", function () {
+      d3.select(this).attr("fill", "#69b3a2");
+      tooltip.transition().duration(200).style("opacity", 0);
+    });
+}
+
+function drawMapPlotly(quarter) {
+  const col = "Quarterly Total_" + quarter;
+  const stateData = {};
+  globalData.forEach(d => {
+    const val = parseInt(d[col]?.replace(/,/g, ''));
+    if (!isNaN(val)) {
+      stateData[d.State] = (stateData[d.State] || 0) + val;
+    }
+  });
+
+  const states = Object.keys(stateData);
+  const values = states.map(s => stateData[s]);
+
+  const data = [{
+    type: 'choropleth',
+    locationmode: 'USA-states',
+    locations: states,
+    z: values,
+    colorscale: 'Blues',
+    colorbar: {
+      title: `${quarter} Total`,
+    },
+  }];
+
+  const layout = {
+    geo: {
+      scope: 'usa',
+    },
+    margin: { t: 0, b: 0 },
+  };
+
+  Plotly.newPlot('map', data, layout);
+}
+
+function drawScatterPlot(quarter) {
+  const depCol = `Dependent Students_${quarter}`;
+  const indCol = `Independent Students_${quarter}`;
+
+  let data = globalData.filter(d => d[depCol] && d[indCol]);
+
+  if (selectedState !== "ALL") {
+    data = data.filter(d => d.State === selectedState);
+  }
+
+  d3.select("#scatter-plot").html("");
+  const svg = d3.select("#scatter-plot").append("svg").attr("width", 800).attr("height", 400);
+
+  const x = d3.scaleLinear()
+    .domain([0, d3.max(data, d => +d[depCol].replace(/,/g, ''))])
+    .range([60, 750]);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(data, d => +d[indCol].replace(/,/g, ''))])
+    .range([350, 50]);
+
+  svg.append("g").attr("transform", "translate(0,350)").call(d3.axisBottom(x));
+  svg.append("g").attr("transform", "translate(60,0)").call(d3.axisLeft(y));
+
+  svg.selectAll("circle")
+    .data(data)
+    .join("circle")
+    .attr("cx", d => x(+d[depCol].replace(/,/g, '')))
+    .attr("cy", d => y(+d[indCol].replace(/,/g, '')))
+    .attr("r", 4)
+    .attr("fill", "#1f77b4");
+}
 
 function embedAltairScatter(quarter) {
+  const cutoff = +document.getElementById("cutoffRange").value;
   const field = `Quarterly Total_${quarter}`;
-  
-  // Calculate max value from the data
-  const maxValue = d3.max(globalData, d => +d[field] || 0);
-  const stepSize = Math.max(1, Math.floor(maxValue / 100));
 
   const chart = {
     $schema: "https://vega.github.io/schema/vega-lite/v5.json",
     description: "Altair Scatter Plot with Cutoff",
-    data: { values: globalData },
-    params: [{
-      name: "cutoff",
-      value: 0, // Default value
-      bind: {
-        input: "range",
-        min: 0,
-        max: maxValue,
-        step: stepSize,
-        name: "Minimum Applications: ",
-        element: document.getElementById('altair-scatter') // Attach to our div
-      }
-    }],
+    data: { url: "cleaned.csv" },
     transform: [
-      { 
-        filter: {
-          and: [
-            { field: field, valid: true },
-            { field: `Dependent Students_${quarter}`, valid: true },
-            { field: `Independent Students_${quarter}`, valid: true },
-            { expr: `datum["${field}"] >= cutoff` }
-          ]
-        }
-      }
+      { filter: `datum["${field}"] != null && toNumber(datum["${field}"]) >= ${cutoff}` }
     ],
-    mark: {
-      type: "point",
-      tooltip: true
-    },
+    mark: "point",
     encoding: {
-      x: { 
-        field: `Dependent Students_${quarter}`, 
-        type: "quantitative",
-        title: "Dependent Students"
-      },
-      y: { 
-        field: `Independent Students_${quarter}`, 
-        type: "quantitative",
-        title: "Independent Students"
-      },
-      color: {
-        condition: {
-          test: `datum["${field}"] >= cutoff`,
-          value: "#1f77b4" // Blue for points above cutoff
-        },
-        value: "#d3d3d3" // Light gray for points below cutoff
-      },
-      opacity: {
-        condition: {
-          test: `datum["${field}"] >= cutoff`,
-          value: 0.8
-        },
-        value: 0.2
-      },
-      tooltip: [
-        { field: "School", type: "nominal", title: "Institution" },
-        { field: field, type: "quantitative", title: "Total Applications" },
-        { field: `Dependent Students_${quarter}`, type: "quantitative" },
-        { field: `Independent Students_${quarter}`, type: "quantitative" }
-      ]
+      x: { field: `Dependent Students_${quarter}`, type: "quantitative" },
+      y: { field: `Independent Students_${quarter}`, type: "quantitative" },
+      tooltip: [{ field: "School", type: "nominal" }]
     }
   };
 
-  vegaEmbed("#altair-scatter", chart, {
-    actions: false,
-    config: {
-      view: {
-        continuousHeight: 300,
-        continuousWidth: 400
-      }
-    }
-  }).then(result => {
-    // Optional: Style the Vega slider
-    const slider = document.querySelector('#altair-scatter input[type="range"]');
-    if (slider) {
-      slider.style.width = "100%";
-      slider.style.margin = "10px 0";
-    }
-  });
+  vegaEmbed("#altair-scatter", chart, { actions: false });
 }
 
-// [Keep your existing embedAltairHistogram function exactly as is]
+function embedAltairHistogram(quarter) {
+  const chart = {
+    $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+    description: "Altair Histogram",
+    data: { url: "cleaned.csv" },
+    mark: "bar",
+    encoding: {
+      x: {
+        field: `Quarterly Total_${quarter}`,
+        bin: true,
+        type: "quantitative",
+        title: `FAFSA Total Applications (${quarter})`
+      },
+      y: { aggregate: "count", type: "quantitative" }
+    }
+  };
+  vegaEmbed("#altair-histogram", chart, { actions: false });
+}
