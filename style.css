@@ -1,16 +1,17 @@
 body {
   font-family: Arial, sans-serif;
-  background-color: #f5f7fa;
+  background-color: #f9f9f9;
   margin: 0;
   padding: 0;
   color: #333;
 }
 
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 30px;
-  background-color: #ffffff;
+  max-width: 1000px;
+  margin: 30px auto;
+  padding: 20px;
+  background-color: white;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
 h1 {
@@ -20,87 +21,48 @@ h1 {
 
 .tabs {
   text-align: center;
-  margin-bottom: 30px;
+  margin: 20px 0;
 }
 
 .tab-button {
-  background-color: #e0e0e0;
+  background-color: #eee;
   border: none;
-  color: #333;
-  padding: 10px 16px;
-  margin: 5px;
-  font-size: 14px;
-  border-radius: 6px;
+  padding: 10px 20px;
+  margin: 0 4px;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
+  font-weight: bold;
 }
 
 .tab-button.active {
-  background-color: #2c3e50;
+  background-color: #4CAF50;
   color: white;
 }
 
-h2 {
-  color: #2c3e50;
-  margin-top: 40px;
-  margin-bottom: 20px;
+#bar-chart, #map, #scatter-plot, #altair-scatter, #altair-histogram {
+  margin-bottom: 40px;
+}
+
+.controls {
   text-align: center;
+  margin: 10px 0 30px 0;
 }
 
-#bar-chart,
-#map,
-#scatter-plot,
-#altair-scatter,
-#altair-histogram {
-  margin: 0 auto 50px auto;
-  width: 90%;
-  max-width: 900px;
-  background: #f9f9f9;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+.controls label {
+  font-weight: bold;
+  margin-right: 10px;
 }
 
-svg {
-  width: 100%;
-  height: auto;
-  display: block;
+.controls select, .controls input[type="range"] {
+  margin: 0 10px;
 }
 
 .tooltip {
-  font-size: 12px;
-  fill: #333;
-  background-color: rgba(255, 255, 255, 0.9);
-  padding: 5px;
-  border-radius: 3px;
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 14px;
   pointer-events: none;
-}
-
-#state-selector {
-  display: block;
-  margin: 0 auto 20px auto;
-  padding: 5px;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-}
-
-.filter-control {
-  margin: 15px auto;
-  padding: 10px;
-  background: #f9f9f9;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 900px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-
-#cutoffRange {
-  width: 100%;
-  margin: 10px 0;
-}
-
-#cutoffValue {
-  font-weight: bold;
-  color: #2c3e50;
-  margin-left: 5px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.2);
 }
