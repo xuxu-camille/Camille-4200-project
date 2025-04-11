@@ -154,32 +154,75 @@ function drawScatterPlot(quarter) {
 
   let data = globalData.filter(d => d[depCol] && d[indCol]);
 
-  if (selectedState !== "ALL") {
-    data = data.filter(d => d.State === selectedState);
-  }
-
   d3.select("#scatter-plot").html("");
-  const svg = d3.select("#scatter-plot").append("svg").attr("width", 800).attr("height", 400);
+  const svg = d3.select("#scatter-plot")
+    .append("svg")
+    .attr("width", 800)
+    .attr("height", 400);
+
+  const margin = { top: 20, right: 30, bottom: 50, left: 60 };
+  const width = 800 - margin.left - margin.right;
+  const height = 400 - margin.top - margin.bottom;
+
+  const g = svg.append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
 
   const x = d3.scaleLinear()
     .domain([0, d3.max(data, d => +d[depCol].replace(/,/g, ''))])
-    .range([60, 750]);
+    .range([0, width]);
 
   const y = d3.scaleLinear()
     .domain([0, d3.max(data, d => +d[indCol].replace(/,/g, ''))])
-    .range([350, 50]);
+    .range([height, 0]);
 
-  svg.append("g").attr("transform", "translate(0,350)").call(d3.axisBottom(x));
-  svg.append("g").attr("transform", "translate(60,0)").call(d3.axisLeft(y));
+  // Axes
+  g.append("g")
+    .attr("transform", `translate(0,${height})`)
+    .call(d3.axisBottom(x));
 
-  svg.selectAll("circle")
+  g.append("g")
+    .call(d3.axisLeft(y));
+
+  // Scatter points
+  g.selectAll("circle")
     .data(data)
     .join("circle")
     .attr("cx", d => x(+d[depCol].replace(/,/g, '')))
     .attr("cy", d => y(+d[indCol].replace(/,/g, '')))
     .attr("r", 4)
     .attr("fill", "#1f77b4");
+
+  // 👉 Add regression line
+  // Step 1: prepare (x, y) arrays
+  const xVals = data.map(d => +d[depCol].replace(/,/g, ''));
+  const yVals = data.map(d => +d[indCol].replace(/,/g, ''));
+
+  // Step 2: compute linear regression using least squares
+  const n = xVals.length;
+  const sumX = d3.sum(xVals);
+  const sumY = d3.sum(yVals);
+  const sumXY = d3.sum(xVals.map((x, i) => x * yVals[i]));
+  const sumX2 = d3.sum(xVals.map(x => x * x));
+
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  // Step 3: define two end points for the line
+  const xMin = d3.min(xVals);
+  const xMax = d3.max(xVals);
+  const yMin = slope * xMin + intercept;
+  const yMax = slope * xMax + intercept;
+
+  // Step 4: draw the line
+  g.append("line")
+    .attr("x1", x(xMin))
+    .attr("y1", y(yMin))
+    .attr("x2", x(xMax))
+    .attr("y2", y(yMax))
+    .attr("stroke", "red")
+    .attr("stroke-width", 2);
 }
+
 
 function embedAltairScatter(quarter) {
   const cutoff = +document.getElementById("cutoffRange").value;
