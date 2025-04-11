@@ -331,6 +331,11 @@ function drawStateSideBySideBarChart(quarterLabel = "Fall 2023") {
     .attr("alignment-baseline", "middle");
 }
 
+function updateCharts(quarter) {
+  drawScatterPlot(quarter);
+  drawStateSideBySideBarChart(quarter);
+  embedAltairScatter(quarter);
+}
 
 
 function embedAltairScatter(quarter) {
