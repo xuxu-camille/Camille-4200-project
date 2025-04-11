@@ -267,7 +267,7 @@ function drawStateSideBySideBarChart(quarterLabel = "Fall 2023") {
     .range([0, width])
     .padding(0.2);
 
-  const x1 = d3.scaleBand()
+    const x1 = d3.scaleBand()
     .domain(["Dependent", "Independent"])
     .range([0, x0.bandwidth()])
     .padding(0.05);
@@ -281,54 +281,56 @@ function drawStateSideBySideBarChart(quarterLabel = "Fall 2023") {
     .domain(["Dependent", "Independent"])
     .range(["#1f77b4", "#ff7f0e"]);
 
-  // X-axis
+  // X Axis
   svg.append("g")
     .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x0));
+    .call(d3.axisBottom(x0))
+    .selectAll("text")
+    .attr("transform", "rotate(-40)")
+    .style("text-anchor", "end");
 
-  // Y-axis
+  // Y Axis
   svg.append("g")
     .call(d3.axisLeft(y));
 
-  // Bar groups
-  svg.selectAll("g.state")
+  // Bars
+  svg.append("g")
+    .selectAll("g")
     .data(topStates)
     .join("g")
-    .attr("class", "state")
     .attr("transform", d => `translate(${x0(d.state)},0)`)
     .selectAll("rect")
     .data(d => [
-      { type: "Dependent", value: d.dependent },
-      { type: "Independent", value: d.independent }
+      { key: "Dependent", value: d.dependent },
+      { key: "Independent", value: d.independent }
     ])
     .join("rect")
-    .attr("x", d => x1(d.type))
+    .attr("x", d => x1(d.key))
     .attr("y", d => y(d.value))
     .attr("width", x1.bandwidth())
     .attr("height", d => height - y(d.value))
-    .attr("fill", d => color(d.type));
+    .attr("fill", d => color(d.key));
 
-
+  // Legend
   const legend = svg.append("g")
-    .attr("transform", `translate(${width - 100}, 0)`);
+    .attr("transform", `translate(${width - 100}, -20)`);
 
-  legend.selectAll("rect")
-    .data(["Dependent", "Independent"])
-    .join("rect")
-    .attr("x", 0)
-    .attr("y", (d, i) => i * 20)
-    .attr("width", 12)
-    .attr("height", 12)
-    .attr("fill", d => color(d));
+  ["Dependent", "Independent"].forEach((key, i) => {
+    const legendRow = legend.append("g")
+      .attr("transform", `translate(0, ${i * 20})`);
 
-  legend.selectAll("text")
-    .data(["Dependent", "Independent"])
-    .join("text")
-    .attr("x", 20)
-    .attr("y", (d, i) => i * 20 + 10)
-    .text(d => d)
-    .attr("font-size", "12px")
-    .attr("alignment-baseline", "middle");
+    legendRow.append("rect")
+      .attr("width", 12)
+      .attr("height", 12)
+      .attr("fill", color(key));
+
+    legendRow.append("text")
+      .attr("x", 20)
+      .attr("y", 10)
+      .text(key)
+      .attr("text-anchor", "start")
+      .style("alignment-baseline", "middle");
+  });
 }
 
 function updateCharts(quarter) {
