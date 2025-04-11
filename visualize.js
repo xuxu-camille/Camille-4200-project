@@ -192,7 +192,6 @@ function drawScatterPlot(quarter) {
     .attr("r", 4)
     .attr("fill", "#1f77b4");
 
-  // 👉 Add regression line
   // Step 1: prepare (x, y) arrays
   const xVals = data.map(d => +d[depCol].replace(/,/g, ''));
   const yVals = data.map(d => +d[indCol].replace(/,/g, ''));
